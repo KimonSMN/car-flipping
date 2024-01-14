@@ -2,10 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 
-total_price = 0
-num_prices = 0
+specific_model_total_price = 0
+specific_model_count = 0
 base_url = "https://www.car.gr/used-cars/audi.html?activeq=audi&category=15001&from_suggester=1&make=14093&pg="
-total_pages = 1 # Replace with actual number of pages or a method to find it
+total_pages = 1  # Replace with actual number of pages or a method to find it
 
 file = open("audi_cars.csv", "w", newline='', encoding='utf-8')
 writer = csv.writer(file)
@@ -19,24 +19,27 @@ for page_num in range(1, total_pages + 1):
     titles = soup.findAll("h2", attrs={"class": "title"})
     prices = soup.findAll("div", attrs={"class": "price-tag current-price"})
     car_ids = soup.findAll("a", attrs={"class": "row-anchor"})
-    milages = soup.findAll("span", attrs={"title": "Milage"})
-    
-    for price_tag in prices:
-        # Extract and clean the price
-        price_text = price_tag.get_text(strip=True).replace('€', '').replace('.', '').replace(',', '.')
-        price = float(price_text)
-        total_price += price
-        num_prices += 1
 
-    for title, price, car_id_tag in zip(titles, prices, car_ids):
+    for title, price_tag, car_id_tag in zip(titles, prices, car_ids):
         if "Audi" in title.text:
-            car_id = car_id_tag['href'].split('/')[-1] if car_id_tag else 'N/A'
-            writer.writerow([title.text.strip(), price.text.strip(), car_id])
+            price_text = price_tag.get_text(strip=True)
+            price_value = price_text.replace('€', '').replace('.', '').replace(',', '.')
+            try:
+                price = float(price_value)
+                car_id = car_id_tag['href'].split('/')[-1] if car_id_tag else 'N/A'
+                writer.writerow([title.text.strip(), price_text, car_id])  # Use price_text here
 
-if num_prices > 0:
-    average_price = total_price / num_prices
-    print("Average Price:", average_price)
+                if "16" in title.text:
+                    specific_model_total_price += price
+                    specific_model_count += 1
+            except ValueError:
+                # Handle the case where the conversion fails
+                print(f"Could not convert price '{price_text}' to a number.")
+
+if specific_model_count > 0:
+    average_price = specific_model_total_price / specific_model_count
+    print("Average Price of specific models:", average_price)
 else:
-    print("No prices found to calculate the average.")
+    print("No specific models found to calculate the average.")
 
 file.close()
